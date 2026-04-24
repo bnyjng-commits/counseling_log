@@ -1,9 +1,6 @@
 import streamlit as st
 from supabase import create_client, Client
 import anthropic
-import speech_recognition as sr
-import io
-from pydub import AudioSegment
 import json
 
 # 1. 보안 설정값 가져오기 (secrets.toml 기반)
