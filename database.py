@@ -80,12 +80,26 @@ def extract_info_from_text(text):
     문장: {text}"""
 
     response = client.messages.create(
-        model="claude-sonnet-4-6",
+        model="claude-3-5-sonnet-20240620",
         max_tokens=500,
         messages=[{"role": "user", "content": prompt}]
     )
-    return json.loads(response.content[0].text)
 
+    # 🌟 [수정 포인트] AI가 보낸 텍스트에서 { } 부분만 찾아내는 안전장치
+    raw_text = response.content[0].text
+    try:
+        # 문자열에서 처음 등장하는 { 와 마지막에 등장하는 } 사이의 내용만 추출
+        start_idx = raw_text.find('{')
+        end_idx = raw_text.rfind('}') + 1
+        if start_idx != -1 and end_idx != 0:
+            json_text = raw_text[start_idx:end_idx]
+            return json.loads(json_text)
+        else:
+            # { }가 아예 없는 경우 대비
+            return {"name": "", "class": "", "content": raw_text}
+    except Exception:
+        # 만약 그래도 실패하면 빈 값이라도 돌려주어 앱이 꺼지지 않게 함
+        return {"name": "", "class": "", "content": "정보 추출에 실패했습니다. 직접 입력해 주세요."}
 
 # --- [AI 분석 함수: 사진(OCR) 정보 추출] ---
 def analyze_image_with_ai(image_file):
@@ -93,7 +107,7 @@ def analyze_image_with_ai(image_file):
     base64_image = base64.b64encode(image_file.getvalue()).decode("utf-8")
 
     response = client.messages.create(
-        model="claude-sonnet-4-6",
+        model="claude-3-5-sonnet-20240620",
         max_tokens=1024,
         messages=[
             {
@@ -116,11 +130,15 @@ def analyze_image_with_ai(image_file):
         ],
     )
 
+    # 🌟 [수정 포인트] 사진 분석 결과에서도 { }만 찾아내기
+    raw_text = response.content[0].text
     try:
-        raw_text = response.content[0].text
-        # JSON 문자열만 추출하는 안전장치
-        json_text = raw_text.split('{', 1)[-1].rsplit('}', 1)[0]
-        return json.loads('{' + json_text + '}')
-    except Exception as e:
-        # 에러 시 상세 내용을 찍어서 원인을 파악할 수 있게 합니다.
-        return {"name": "", "class": "", "content": f"분석 실패: {str(e)}"}
+        start_idx = raw_text.find('{')
+        end_idx = raw_text.rfind('}') + 1
+        if start_idx != -1 and end_idx != 0:
+            json_text = raw_text[start_idx:end_idx]
+            return json.loads(json_text)
+        else:
+            return {"name": "", "class": "", "content": "내용을 읽지 못했습니다."}
+    except Exception:
+        return {"name": "", "class": "", "content": "사진 분석 중 오류가 발생했습니다."}
