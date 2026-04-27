@@ -2,6 +2,9 @@ import streamlit as st
 from supabase import create_client, Client
 import anthropic
 import json
+import datetime # 💡 추가: 파이썬 기본 시간 도구
+import pytz     # 💡 추가: 세계 시간대 변환 도구
+
 
 # 1. 보안 설정값 가져오기 (secrets.toml 기반)
 SUPABASE_URL = st.secrets["SUPABASE_URL"]
