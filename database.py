@@ -16,12 +16,18 @@ def get_supabase() -> Client:
 # --- [저장 함수] ---
 def save_log(grade_class, student_name, content, category, incident_id=None):
     supabase = get_supabase()
+
+    # 💡 한국 시간(KST)으로 현재 시간 구하기
+    kst = pytz.timezone('Asia/Seoul')
+    now_kst = datetime.datetime.now(kst)
+
     data = {
         "grade_class": grade_class,
         "student_name": student_name,
         "content": content,
         "category": category,
-        "incident_id": incident_id
+        "incident_id": incident_id,
+        "created_at": now_kst.isoformat()  # 💡 명시적으로 한국 시간 저장
     }
     return supabase.table("counseling_logs").insert(data).execute()
 
