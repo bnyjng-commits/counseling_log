@@ -4,6 +4,11 @@ import time
 from database import save_log, fetch_logs, analyze_category_with_ai, extract_info_from_text, analyze_image_with_ai
 from streamlit_mic_recorder import speech_to_text
 
+# 🔒 검문소 설치
+if "logged_in" not in st.session_state or not st.session_state.logged_in:
+    st.warning("먼저 메인 화면에서 로그인해 주세요.")
+    st.stop() # 🛑 여기서 실행을 중단시켜서 아래 내용을 못 보게 함
+
 st.set_page_config(page_title="상담 기록하기", layout="wide")
 
 # --- [0. CSS 마법: 3개 버튼 사이즈 완벽 통일] ---
@@ -80,12 +85,12 @@ with col_stt:
     stt_key = f"stt_{st.session_state.stt_key_idx}"
     # 녹음 버튼
     text_from_voice = speech_to_text(
-        language='ko', 
+        language='ko',
         start_prompt="🎤 상담 내용 음성 녹음 시작",
-        stop_prompt="🛑 녹음 완료 및 분석하기", 
+        stop_prompt="🛑 녹음 완료 및 분석하기",
         key=stt_key
     )
-    
+
     if text_from_voice and text_from_voice != st.session_state.last_processed_text:
         with st.spinner("소넷 비서가 분석 중..."):
             extracted = extract_info_from_text(text_from_voice)
@@ -99,14 +104,14 @@ with col_cam:
     if st.button("📷 카메라 켜기/끄기", use_container_width=False, key="btn_cam_tool"):
         # 🌟 카메라 켜고 꺼짐을 토글하면서, 업로더는 끕니다.
         st.session_state.show_camera = not st.session_state.show_camera
-        st.session_state.show_uploader = False # 업로더 무조건 끔
+        st.session_state.show_uploader = False  # 업로더 무조건 끔
 
 with col_upload:
     # 🌟 [수정된 버튼 로직: 조건부 노출 토글]
     if st.button("📷 상담록 사진 업로드", use_container_width=False, key="btn_upload_tool"):
         # 🌟 업로더 켜고 꺼짐을 토글하면서, 카메라는 끕니다.
         st.session_state.show_uploader = not st.session_state.show_uploader
-        st.session_state.show_camera = False # 카메라 무조건 끔
+        st.session_state.show_camera = False  # 카메라 무조건 끔
 
 # --- [4-1. 카메라 위젯 (조건부 노출)] ---
 if st.session_state.show_camera:
@@ -117,7 +122,7 @@ if st.session_state.show_camera:
             img_extracted = analyze_image_with_ai(captured_image)
             st.session_state.temp_name = img_extracted.get("name", "")
             st.session_state.temp_content = img_extracted.get("content", "")
-            st.session_state.show_camera = False # 촬영 후 닫기
+            st.session_state.show_camera = False  # 촬영 후 닫기
             st.rerun()
 
 # --- [4-2. 사진 파일 업로더 (조건부 노출)] ---
@@ -125,16 +130,16 @@ if st.session_state.show_camera:
 if st.session_state.show_uploader:
     st.markdown("---")
     st.subheader("📁 상담록 사진 파일 업로드")
-    
+
     # key에 form_reset_idx를 넣어 매번 새로운 위젯을 생성 (루프 방지)
     current_uploader_key = f"uploader_{st.session_state.form_reset_idx}_{st.session_state.stt_key_idx}"
     uploaded_file = st.file_uploader(
-        "상담록 사진을 업로드하세요 (jpg, jpeg, png)", 
-        type=["jpg", "jpeg", "png"], 
+        "상담록 사진을 업로드하세요 (jpg, jpeg, png)",
+        type=["jpg", "jpeg", "png"],
         key=current_uploader_key,
-        label_visibility="collapsed" # 상단 subheader와 겹치므로 라벨 숨김
+        label_visibility="collapsed"  # 상단 subheader와 겹치므로 라벨 숨김
     )
-    
+
     if uploaded_file is not None:
         with st.spinner("소넷 비서가 업로드한 사진을 분석 중입니다..."):
             try:
@@ -144,7 +149,7 @@ if st.session_state.show_uploader:
                 # 2. 분석된 내용을 세션 상태에 저장
                 st.session_state.temp_name = img_extracted.get("name", "")
                 st.session_state.temp_content = img_extracted.get("content", "")
-                
+
                 # 3. 학급 자동 매칭 로직 (기존 로직 재사용)
                 e_class = img_extracted.get("class", "").replace(" ", "")
                 if e_class:
@@ -157,13 +162,13 @@ if st.session_state.show_uploader:
                         st.session_state["new_class_input"] = e_class
 
                 st.success("✅ 사진 업로드 및 분석 완료! 아래 내용 입력창을 확인하세요.")
-                
+
                 # 🌟 [핵심] 분석이 완료되면 업로더를 닫고 새로고침
                 st.session_state.show_uploader = False
-                st.session_state.stt_key_idx += 1 # fresh widgets
+                st.session_state.stt_key_idx += 1  # fresh widgets
                 time.sleep(1)
                 st.rerun()
-                
+
             except Exception as e:
                 st.error(f"사진 파일 분석 중 오류 발생: {e}")
 
@@ -213,8 +218,8 @@ if submit_button:
                 st.session_state.last_processed_text = ""
                 st.session_state.stt_key_idx += 1
                 st.session_state.form_reset_idx += 1
-                st.session_state.show_camera = False # reset tool mode
-                st.session_state.show_uploader = False # 🌟 reset tool mode
+                st.session_state.show_camera = False  # reset tool mode
+                st.session_state.show_uploader = False  # 🌟 reset tool mode
 
                 st.balloons()
                 st.success("✅ 저장이 완료되었습니다!")
