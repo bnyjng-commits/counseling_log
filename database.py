@@ -80,7 +80,7 @@ def extract_info_from_text(text):
     문장: {text}"""
 
     response = client.messages.create(
-        model="claude-3-5-sonnet-20240620",
+        model="claude-sonnet-4-6",
         max_tokens=500,
         messages=[{"role": "user", "content": prompt}]
     )
@@ -107,7 +107,7 @@ def analyze_image_with_ai(image_file):
     base64_image = base64.b64encode(image_file.getvalue()).decode("utf-8")
 
     response = client.messages.create(
-        model="claude-3-5-sonnet-20240620",
+        model="claude-sonnet-4-6",
         max_tokens=1024,
         messages=[
             {
