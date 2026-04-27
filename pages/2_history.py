@@ -3,6 +3,11 @@ from database import fetch_logs, update_log, delete_log
 from datetime import datetime
 from collections import Counter
 
+# 🔒 검문소 설치
+if "logged_in" not in st.session_state or not st.session_state.logged_in:
+    st.warning("먼저 메인 화면에서 로그인해 주세요.")
+    st.stop() # 🛑 여기서 실행을 중단시켜서 아래 내용을 못 보게 함
+    
 st.set_page_config(page_title="상담 이력 조회", layout="wide")
 
 # --- [1. 알림 메시지 처리] ---
