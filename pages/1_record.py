@@ -5,6 +5,19 @@ from database import save_log, fetch_logs, analyze_category_with_ai, extract_inf
 from streamlit_mic_recorder import speech_to_text
 
 st.set_page_config(page_title="상담 기록하기", layout="wide")
+st.markdown("""
+    <style>
+    /* 모든 버튼(음성 녹음 버튼 포함)을 컨테이너 너비에 맞게 100%로 설정 */
+    div.stButton > button {
+        width: 100% !important;
+        height: 3rem !important; /* 높이도 똑같이 맞춤 */
+    }
+    /* 음성 녹음 위젯 내부의 버튼 스타일 강제 조정 */
+    iframe {
+        width: 100% !important;
+    }
+    </style>
+""", unsafe_allow_html=True)
 
 # --- [1. 세션 상태 관리] ---
 if "temp_name" not in st.session_state: st.session_state.temp_name = ""
@@ -31,13 +44,21 @@ if st.session_state.my_class:
 else:
     class_options = ["기존 목록에서 선택", "직접 입력..."] + existing_classes
 
-# --- [4. 상단 입력 도구 (음성 & 사진)] ---
+# --- [4. 상단 입력 도구 (음성 & 사진) 섹션 수정] ---
 st.subheader("🎤 말로 하거나 📷 사진 찍거나")
+
+# 🌟 col_stt와 col_ocr의 비율을 1:1로 정확히 나눕니다.
 col_stt, col_ocr = st.columns(2)
 
 with col_stt:
     stt_key = f"stt_{st.session_state.stt_key_idx}"
-    text_from_voice = speech_to_text(language='ko', start_prompt="🎤 녹음 시작", stop_prompt="🛑 정지", key=stt_key)
+    # 💡 녹음 버튼 - 글자 수를 비슷하게 맞추면 더 예쁩니다.
+    text_from_voice = speech_to_text(
+        language='ko',
+        start_prompt="🎤 상담 내용 음성 녹음 시작",  # 글자 길이를 비슷하게 조정
+        stop_prompt="🛑 녹음 완료 및 분석하기",
+        key=stt_key
+    )
 
     if text_from_voice and text_from_voice != st.session_state.last_processed_text:
         with st.spinner("소넷 비서가 분석 중..."):
@@ -48,7 +69,8 @@ with col_stt:
             st.rerun()
 
 with col_ocr:
-    if st.button("📷 사진 촬영 모드 켜기/끄기", use_container_width=True):
+    # 🌟 use_container_width=True를 사용하여 칸에 꽉 차게 만듭니다.
+    if st.button("📷 사진촬영모드 켜기/끄기", use_container_width=True):
         st.session_state.show_camera = not st.session_state.show_camera
 
 # 카메라 위젯
