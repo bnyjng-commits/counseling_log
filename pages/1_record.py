@@ -96,7 +96,7 @@ with col_stt:
 
 with col_cam:
     # 사진 촬영 버튼
-    if st.button("📷 사진 촬영 모드 켜기/끄기", use_container_width=False, key="btn_cam_tool"):
+    if st.button("📷 카메라 켜기/끄기", use_container_width=False, key="btn_cam_tool"):
         # 🌟 카메라 켜고 꺼짐을 토글하면서, 업로더는 끕니다.
         st.session_state.show_camera = not st.session_state.show_camera
         st.session_state.show_uploader = False # 업로더 무조건 끔
