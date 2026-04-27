@@ -35,9 +35,28 @@ def save_log(grade_class, student_name, content, category, incident_id=None):
     return supabase.table("counseling_logs").insert(data).execute()
 
 
+# --- [조회 화면을 위한 관리 함수 세트] ---
 def fetch_logs():
     supabase = get_supabase()
     return supabase.table("counseling_logs").select("*").order("created_at", desc=True).execute().data
+
+
+# 1. 기존 기록 수정 함수 (5개의 인자를 받도록 수정된 버전)
+def update_log(log_id, grade_class, student_name, category, content):
+    supabase = get_supabase()
+    updated_data = {
+        "grade_class": grade_class,
+        "student_name": student_name,
+        "category": category,
+        "content": content
+    }
+    return supabase.table("counseling_logs").update(updated_data).eq("id", log_id).execute()
+
+
+# 2. 기록 삭제 함수 (기존 그대로 유지)
+def delete_log(log_id):
+    supabase = get_supabase()
+    return supabase.table("counseling_logs").delete().eq("id", log_id).execute()
 
 
 # --- [AI 분석 함수: 텍스트 카테고리 분류] ---
@@ -102,26 +121,6 @@ def analyze_image_with_ai(image_file):
         # JSON 문자열만 추출하는 안전장치
         json_text = raw_text.split('{', 1)[-1].rsplit('}', 1)[0]
         return json.loads('{' + json_text + '}')
-    except:
-        return {"name": "", "class": "", "content": "이미지 분석에 실패했습니다."}
-
-
-# 1. 기존 기록 수정 함수
-# --- [조회 화면의 요구사항에 맞춰 5개의 인자를 받는 함수로 수정] ---
-def update_log(log_id, grade_class, student_name, category, content):
-    supabase = get_supabase()
-
-    # 5개의 재료를 하나의 바구니(딕셔너리)에 담습니다.
-    updated_data = {
-        "grade_class": grade_class,
-        "student_name": student_name,
-        "category": category,
-        "content": content
-    }
-
-    # 바구니를 통째로 넘겨서 업데이트를 진행합니다.
-    return supabase.table("counseling_logs").update(updated_data).eq("id", log_id).execute()
-# 2. 기록 삭제 함수
-def delete_log(log_id):
-    supabase = get_supabase()
-    return supabase.table("counseling_logs").delete().eq("id", log_id).execute()
+    except Exception as e:
+        # 에러 시 상세 내용을 찍어서 원인을 파악할 수 있게 합니다.
+        return {"name": "", "class": "", "content": f"분석 실패: {str(e)}"}
