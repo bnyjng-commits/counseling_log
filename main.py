@@ -1,5 +1,11 @@
 import streamlit as st
 from supabase import create_client
+from streamlit_calendar import calendar
+import datetime
+from database import (
+    fetch_logs, fetch_schedules, save_schedule,
+    get_user_settings, save_user_settings
+)
 
 # 페이지 설정
 st.set_page_config(
@@ -21,8 +27,52 @@ if "user" not in st.session_state:
     st.session_state.user = None
 if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
+if "my_class" not in st.session_state:
+    st.session_state.my_class = ""
+if "selected_date" not in st.session_state:
+    st.session_state.selected_date = None
+if "show_schedule_dialog" not in st.session_state:
+    st.session_state.show_schedule_dialog = False
 
-# ── 로그인 전: 사이드바 완전 숨김 ──────────────────────────────────────────
+
+# ── 상담 일정 입력 다이얼로그 ────────────────────────────────────────────────
+@st.dialog("📅 상담 일정 입력")
+def schedule_dialog():
+    sch_date = st.date_input("날짜", value=datetime.date.today())
+    sch_name = st.text_input("학생 이름")
+    sch_note = st.text_input("메모 (선택)")
+
+    col_s, col_c = st.columns(2)
+    with col_s:
+        if st.button("저장", use_container_width=True):
+            if sch_name:
+                try:
+                    save_schedule(
+                        st.session_state.user.id,
+                        sch_date,
+                        sch_name,
+                        sch_note if sch_note else None
+                    )
+                    st.session_state.show_schedule_dialog = False
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"저장 오류: {e}")
+            else:
+                st.warning("학생 이름을 입력해 주세요.")
+    with col_c:
+        if st.button("취소", use_container_width=True):
+            st.session_state.show_schedule_dialog = False
+            st.rerun()
+
+
+# ── 우리반 설정 변경 시 DB 저장 콜백 ─────────────────────────────────────────
+def on_class_change():
+    if st.session_state.user:
+        st.session_state.my_class = st.session_state.sidebar_my_class
+        save_user_settings(st.session_state.user.id, st.session_state.sidebar_my_class)
+
+
+# ── 로그인 전: 사이드바 완전 숨김 ────────────────────────────────────────────
 if not st.session_state.user:
     st.markdown(
         """<style>[data-testid="stSidebar"]{display:none}</style>""",
@@ -47,7 +97,7 @@ if not st.session_state.user:
                         {"email": email, "password": password}
                     )
                     st.session_state.user = result.user
-                    st.session_state.logged_in = True  # 기존 pages 호환용
+                    st.session_state.logged_in = True
                     st.rerun()
                 except Exception as e:
                     st.error(f"로그인 실패: {e}")
@@ -69,15 +119,136 @@ if not st.session_state.user:
 
     st.stop()
 
-# ── 로그인 후: 사이드바 + 홈 화면 ──────────────────────────────────────────
+
+# ── 로그인 후 ─────────────────────────────────────────────────────────────────
+user_id = st.session_state.user.id
+
+# 우리반 설정: 세션에 없으면 DB에서 로드
+if not st.session_state.my_class:
+    settings = get_user_settings(user_id)
+    if settings and settings.get("my_class"):
+        st.session_state.my_class = settings["my_class"]
+
+# ── 사이드바 ──────────────────────────────────────────────────────────────────
 st.sidebar.markdown(f"👤 **{st.session_state.user.email}**")
 st.sidebar.markdown("---")
 
+st.sidebar.text_input(
+    "🏫 우리반 설정",
+    value=st.session_state.my_class,
+    key="sidebar_my_class",
+    on_change=on_class_change,
+    placeholder="예: 2-3"
+)
+
+st.sidebar.markdown("---")
 if st.sidebar.button("🚪 로그아웃"):
     st.session_state.user = None
     st.session_state.logged_in = False
+    st.session_state.my_class = ""
+    st.session_state.selected_date = None
     st.rerun()
 
+
+# ── 달력 홈 화면 ──────────────────────────────────────────────────────────────
 st.title("📝 AI 상담일지")
-st.write("### 환영합니다, 선생님! 상담 업무를 시작해 보세요.")
-st.info("왼쪽 사이드바에서 메뉴를 선택하여 상담을 기록하거나 조회하세요.")
+
+# DB에서 데이터 로드
+logs = fetch_logs(user_id)
+schedules = fetch_schedules(user_id)
+
+# 달력 이벤트 구성
+events = []
+for log in logs:
+    date_str = log.get("created_at", "")[:10]
+    category = log.get("category", "기타")
+    name = log.get("student_name", "")
+    events.append({
+        "title": f"[{category}] {name}",
+        "start": date_str,
+        "backgroundColor": "#4a90e2",
+        "borderColor": "#4a90e2",
+    })
+
+for sch in schedules:
+    events.append({
+        "title": f"(예정) {sch['student_name']}",
+        "start": sch["scheduled_date"],
+        "backgroundColor": "#f5a623",
+        "borderColor": "#f5a623",
+    })
+
+# 달력 옵션
+calendar_options = {
+    "headerToolbar": {
+        "left": "prev",
+        "center": "title",
+        "right": "next"
+    },
+    "initialView": "dayGridMonth",
+    "locale": "ko",
+    "height": 650,
+    "selectable": True,
+    "dayMaxEvents": 3,
+}
+
+# 오늘 날짜 파란색 반투명 강조
+custom_css = """
+.fc-day-today {
+    background-color: rgba(70, 130, 255, 0.15) !important;
+}
+"""
+
+cal_result = calendar(
+    events=events,
+    options=calendar_options,
+    custom_css=custom_css,
+    key="home_calendar"
+)
+
+# 날짜 클릭 처리
+if cal_result and cal_result.get("dateClick"):
+    st.session_state.selected_date = cal_result["dateClick"]["dateStr"]
+
+# ── 선택 날짜 상담 목록 ────────────────────────────────────────────────────────
+if st.session_state.selected_date:
+    sel_date = st.session_state.selected_date
+    st.markdown("---")
+    st.subheader(f"📅 {sel_date} 기록")
+
+    day_logs = [l for l in logs if l.get("created_at", "")[:10] == sel_date]
+    day_schedules = [s for s in schedules if s.get("scheduled_date") == sel_date]
+
+    if day_logs:
+        for log in day_logs:
+            content = log.get("content", "")
+            preview = content[:50] + ("..." if len(content) > 50 else "")
+            st.info(f"**[{log.get('category')}] {log.get('student_name')}** — {preview}")
+
+    if day_schedules:
+        for sch in day_schedules:
+            note = f" — {sch['note']}" if sch.get("note") else ""
+            st.warning(f"**(예정) {sch['student_name']}**{note}")
+
+    if not day_logs and not day_schedules:
+        st.write("이 날짜의 기록이 없습니다.")
+
+    if st.button("✍️ 이 날짜로 상담 기록하기"):
+        st.session_state.record_date = sel_date
+        st.switch_page("pages/1_record.py")
+
+# ── 하단 버튼 ─────────────────────────────────────────────────────────────────
+st.markdown("---")
+col1, col2 = st.columns(2)
+
+with col1:
+    if st.button("✍️ 상담일지 작성", use_container_width=True):
+        st.switch_page("pages/1_record.py")
+
+with col2:
+    if st.button("📅 상담 일정 입력", use_container_width=True):
+        st.session_state.show_schedule_dialog = True
+
+# 일정 입력 다이얼로그 호출
+if st.session_state.show_schedule_dialog:
+    schedule_dialog()
