@@ -71,12 +71,12 @@ def save_log(grade_class, student_name, content, category, incident_id=None, use
     return supabase.table("counseling_logs").insert(data).execute()
 
 
-# --- [조회 함수: user_id가 있으면 해당 유저 데이터만 반환] ---
+# --- [조회 함수: 해당 유저 데이터 + user_id 없는 기존 데이터 함께 반환] ---
 def fetch_logs(user_id=None):
     supabase = get_supabase()
     query = supabase.table("counseling_logs").select("*").order("created_at", desc=True)
     if user_id:
-        query = query.eq("user_id", user_id)
+        query = query.or_(f"user_id.eq.{user_id},user_id.is.null")
     return query.execute().data
 
 
