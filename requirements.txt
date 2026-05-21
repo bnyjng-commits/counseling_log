@@ -1,0 +1,6 @@
+streamlit
+supabase
+anthropic
+streamlit-mic-recorder
+streamlit-calendar
+pytz
