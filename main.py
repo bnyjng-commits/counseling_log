@@ -33,6 +33,8 @@ if "selected_date" not in st.session_state:
     st.session_state.selected_date = None
 if "show_schedule_dialog" not in st.session_state:
     st.session_state.show_schedule_dialog = False
+if "session" not in st.session_state:
+    st.session_state.session = None
 
 
 # ── 상담 일정 입력 다이얼로그 ────────────────────────────────────────────────
@@ -97,6 +99,7 @@ if not st.session_state.user:
                         {"email": email, "password": password}
                     )
                     st.session_state.user = result.user
+                    st.session_state.session = result.session  # RLS용 JWT 저장
                     st.session_state.logged_in = True
                     st.rerun()
                 except Exception as e:
@@ -144,6 +147,7 @@ st.sidebar.text_input(
 st.sidebar.markdown("---")
 if st.sidebar.button("🚪 로그아웃"):
     st.session_state.user = None
+    st.session_state.session = None
     st.session_state.logged_in = False
     st.session_state.my_class = ""
     st.session_state.selected_date = None

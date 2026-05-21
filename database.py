@@ -38,7 +38,18 @@ ANTHROPIC_API_KEY = st.secrets["ANTHROPIC_API_KEY"]
 
 
 def get_supabase() -> Client:
-    return create_client(SUPABASE_URL, SUPABASE_KEY)
+    client = create_client(SUPABASE_URL, SUPABASE_KEY)
+    # RLS가 올바르게 동작하도록 로그인 사용자의 JWT 토큰을 클라이언트에 설정
+    session = st.session_state.get("session")
+    if session:
+        try:
+            client.auth.set_session(
+                access_token=session.access_token,
+                refresh_token=session.refresh_token
+            )
+        except Exception:
+            pass
+    return client
 
 
 # --- [저장 함수: 한국 시간 강제 지정] ---
