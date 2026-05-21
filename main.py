@@ -211,12 +211,14 @@ cal_result = calendar(
     key="home_calendar"
 )
 
-# 날짜 클릭 처리 (라이브러리 버전에 따라 키 이름이 다를 수 있어 .get() 사용)
+# 날짜 클릭 처리 — 라이브러리가 UTC 기준으로 반환하므로 KST(+9) 보정으로 1일 추가
 if cal_result and cal_result.get("dateClick"):
     date_info = cal_result["dateClick"]
     clicked = date_info.get("dateStr") or date_info.get("date", "")
     if clicked:
-        st.session_state.selected_date = clicked[:10]
+        from datetime import date as dt_date, timedelta
+        corrected = (dt_date.fromisoformat(clicked[:10]) + timedelta(days=1)).isoformat()
+        st.session_state.selected_date = corrected
 
 # ── 선택 날짜 상담 목록 ────────────────────────────────────────────────────────
 if st.session_state.selected_date:
