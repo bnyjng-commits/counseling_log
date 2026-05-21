@@ -191,6 +191,7 @@ calendar_options = {
     },
     "initialView": "dayGridMonth",
     "locale": "ko",
+    "timeZone": "local",
     "height": 650,
     "selectable": True,
     "dayMaxEvents": 3,
