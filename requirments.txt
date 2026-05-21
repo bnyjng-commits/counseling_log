@@ -1,0 +1,5 @@
+streamlit
+supabase
+anthropic
+streamlit-mic-recorder
+pytz
