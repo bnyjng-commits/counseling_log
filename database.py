@@ -188,7 +188,7 @@ def generate_report_with_ai(student_name, selected_logs):
 # --- [AI 분석 함수: 텍스트 카테고리 분류] ---
 def analyze_category_with_ai(content):
     client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
-    prompt = f"다음 상담 내용을 보고 [행동, 정서, 학업, 가정] 중 하나로 분류해줘. 단어만 답해:\n\n{content}"
+    prompt = f"다음 상담 내용을 보고 [행동, 정서, 학업, 가정, 진로, 기타] 중 하나로 분류해줘. 행동/정서/학업/가정/진로 중 어디에도 해당하지 않으면 기타로 분류해. 단어만 답해:\n\n{content}"
 
     response = client.messages.create(
         model="claude-sonnet-4-6",

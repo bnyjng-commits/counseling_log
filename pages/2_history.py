@@ -32,7 +32,7 @@ if not logs:
     st.stop()
 
 all_classes = sorted(list(set(log['grade_class'] for log in logs if log.get('grade_class'))))
-all_categories = ["학업", "교우관계", "학교생활", "가정문제", "진로", "기타"]
+all_categories = ["행동", "정서", "학업", "가정", "진로", "기타"]
 
 # 💡 4. 학급 드롭다운 라벨 생성 로직 (디자인 통일)
 class_display_map = {"전체": "전체"}

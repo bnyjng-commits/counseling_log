@@ -65,7 +65,7 @@ user_id         uuid references auth.users  -- 다계정 대비
 grade_class     text
 student_name    text
 content         text
-category        text  -- AI 자동 분류: 행동/정서/학업/가정
+category        text  -- AI 자동 분류: 행동/정서/학업/가정/진로/기타
 incident_id     text  -- 복수 학생 연관 사건 묶음
 created_at      timestamptz default now()
 ```
