@@ -1,5 +1,5 @@
 import streamlit as st
-from database import fetch_logs, update_log, delete_log, get_user_settings
+from database import fetch_logs, update_log, delete_log, get_user_settings, save_user_settings
 from datetime import datetime
 from collections import Counter
 
@@ -8,8 +8,13 @@ if "user" not in st.session_state or not st.session_state.user:
     st.warning("먼저 로그인해 주세요.")
     st.stop()
 user_id = st.session_state.user.id
-    
+
 st.set_page_config(page_title="상담 이력 조회", layout="wide")
+
+# 우리반 변경 시 DB 저장 콜백
+def on_class_change():
+    st.session_state.my_class = st.session_state.sidebar_my_class
+    save_user_settings(user_id, st.session_state.sidebar_my_class)
 
 # --- [1. 알림 메시지 처리] ---
 if "status_msg" in st.session_state:
@@ -21,7 +26,13 @@ st.sidebar.title("⚙️ 설정")
 if "my_class" not in st.session_state:
     settings = get_user_settings(user_id)
     st.session_state.my_class = settings.get("my_class", "") if settings else ""
-st.session_state.my_class = st.sidebar.text_input("내 학급(우리반) 설정", value=st.session_state.my_class)
+st.sidebar.text_input(
+    "내 학급(우리반) 설정",
+    value=st.session_state.my_class,
+    key="sidebar_my_class",
+    on_change=on_class_change,
+    placeholder="예: 2-3"
+)
 
 st.title("📂 상담 이력 조회")
 
