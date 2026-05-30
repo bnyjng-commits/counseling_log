@@ -1,13 +1,16 @@
 import streamlit as st
 import uuid
 import time
+from datetime import datetime
+from zoneinfo import ZoneInfo
 from database import save_log, fetch_logs, analyze_category_with_ai, extract_info_from_text, analyze_image_with_ai
 from streamlit_mic_recorder import speech_to_text
 
 # 🔒 검문소 설치
-if "logged_in" not in st.session_state or not st.session_state.logged_in:
-    st.warning("먼저 메인 화면에서 로그인해 주세요.")
-    st.stop() # 🛑 여기서 실행을 중단시켜서 아래 내용을 못 보게 함
+if "user" not in st.session_state or not st.session_state.user:
+    st.warning("먼저 로그인해 주세요.")
+    st.stop()
+user_id = st.session_state.user.id
 
 st.set_page_config(page_title="상담 기록하기", layout="wide")
 
@@ -186,9 +189,15 @@ elif selected_class_label.startswith("⭐ 우리반"):
 else:
     grade_class = selected_class_label if selected_class_label != "기존 목록에서 선택" else ""
 
+now_kst = datetime.now(ZoneInfo("Asia/Seoul"))
 with st.form("counseling_form", clear_on_submit=True):
     student_names = st.text_input("학생 이름", value=st.session_state.temp_name)
     content = st.text_area("상담 상세 내용", value=st.session_state.temp_content, height=300)
+    col_date, col_time = st.columns(2)
+    with col_date:
+        counsel_date = st.date_input("상담 날짜", value=now_kst.date())
+    with col_time:
+        counsel_time = st.time_input("상담 시간", value=now_kst.time())
     submit_button = st.form_submit_button("💾 상담 일지 저장하기")
 
 # --- [6. 저장 실행 로직] ---
@@ -203,6 +212,7 @@ if submit_button:
                 name_list = [n.strip() for n in student_names.split(",") if n.strip()]
                 incident_id = str(uuid.uuid4())[:8] if len(name_list) > 1 else None
 
+                counsel_dt = datetime.combine(counsel_date, counsel_time).replace(tzinfo=ZoneInfo("Asia/Seoul"))
                 for entry in name_list:
                     if "(" in entry and ")" in entry:
                         actual_name = entry.split("(")[0].strip()
@@ -210,7 +220,7 @@ if submit_button:
                     else:
                         actual_name = entry
                         actual_class = final_class
-                    save_log(actual_class, actual_name, content, ai_category, incident_id)
+                    save_log(actual_class, actual_name, content, ai_category, incident_id, user_id, counsel_dt)
 
                 # 초기화 마법
                 st.session_state.temp_name = ""

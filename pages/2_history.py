@@ -1,12 +1,13 @@
 import streamlit as st
-from database import fetch_logs, update_log, delete_log
+from database import fetch_logs, update_log, delete_log, get_user_settings
 from datetime import datetime
 from collections import Counter
 
 # 🔒 검문소 설치
-if "logged_in" not in st.session_state or not st.session_state.logged_in:
-    st.warning("먼저 메인 화면에서 로그인해 주세요.")
-    st.stop() # 🛑 여기서 실행을 중단시켜서 아래 내용을 못 보게 함
+if "user" not in st.session_state or not st.session_state.user:
+    st.warning("먼저 로그인해 주세요.")
+    st.stop()
+user_id = st.session_state.user.id
     
 st.set_page_config(page_title="상담 이력 조회", layout="wide")
 
@@ -17,13 +18,15 @@ if "status_msg" in st.session_state:
 
 # --- [2. 사이드바 설정] ---
 st.sidebar.title("⚙️ 설정")
-if "my_class" not in st.session_state: st.session_state.my_class = ""
+if "my_class" not in st.session_state:
+    settings = get_user_settings(user_id)
+    st.session_state.my_class = settings.get("my_class", "") if settings else ""
 st.session_state.my_class = st.sidebar.text_input("내 학급(우리반) 설정", value=st.session_state.my_class)
 
 st.title("📂 상담 이력 조회")
 
 # --- [3. 데이터 로드] ---
-logs = fetch_logs()
+logs = fetch_logs(user_id)
 if not logs:
     st.info("기록이 없습니다.");
     st.stop()

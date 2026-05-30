@@ -53,11 +53,14 @@ def get_supabase() -> Client:
 
 
 # --- [저장 함수: 한국 시간 강제 지정] ---
-def save_log(grade_class, student_name, content, category, incident_id=None, user_id=None):
+def save_log(grade_class, student_name, content, category, incident_id=None, user_id=None, created_at=None):
     supabase = get_supabase()
 
     kst = pytz.timezone('Asia/Seoul')
-    now_kst = datetime.datetime.now(kst).strftime('%Y-%m-%dT%H:%M:%S')
+    if created_at is not None:
+        now_kst = created_at.strftime('%Y-%m-%dT%H:%M:%S')
+    else:
+        now_kst = datetime.datetime.now(kst).strftime('%Y-%m-%dT%H:%M:%S')
 
     data = {
         "grade_class": grade_class,
@@ -153,6 +156,34 @@ def delete_schedule(schedule_id):
 
 
 # ── AI 분석 함수 ──────────────────────────────────────────────────────────────
+
+# --- [AI 생성 함수: 생활기록부 문구 생성] ---
+def generate_report_with_ai(student_name, selected_logs):
+    client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
+    logs_text = "\n".join([
+        f"- [{log.get('category', '기타')}] {log.get('content', '')}"
+        for log in selected_logs
+    ])
+    prompt = f"""다음은 {student_name} 학생의 상담 기록입니다. 이를 바탕으로 중학교 학교생활기록부 행동특성 및 종합의견 문구를 작성해주세요.
+
+상담 기록:
+{logs_text}
+
+작성 규칙:
+- 생활기록부 문체 사용: "~하였음", "~을 보임", "~하는 모습이 관찰됨", "~에 노력하는 태도를 보임" 등
+- 학생의 성장 가능성과 긍정적인 면 중심으로 작성
+- 3~5문장, 200자 내외
+- 학생 이름("{student_name}")을 문두에 포함
+- 부정적 표현은 긍정적으로 순화하여 작성
+- 다른 설명 없이 문구만 출력"""
+
+    response = client.messages.create(
+        model="claude-sonnet-4-6",
+        max_tokens=600,
+        messages=[{"role": "user", "content": prompt}]
+    )
+    return response.content[0].text.strip()
+
 
 # --- [AI 분석 함수: 텍스트 카테고리 분류] ---
 def analyze_category_with_ai(content):
