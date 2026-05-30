@@ -1,4 +1,6 @@
 import streamlit as st
+import streamlit.components.v1 as components
+import json
 from database import fetch_logs, get_user_settings, generate_report_with_ai
 from datetime import datetime, date
 from zoneinfo import ZoneInfo
@@ -93,6 +95,10 @@ chosen = [log for log in filtered if log['id'] in selected_ids]
 
 st.markdown("---")
 
+# 세션 상태 초기화 — 문구 버전(새로 생성 시 text_area 리셋용)
+if "report_edit_version" not in st.session_state:
+    st.session_state.report_edit_version = 0
+
 # --- [5. 생성 버튼] ---
 if st.button("✨ 생활기록부 문구 생성", type="primary", disabled=not chosen):
     with st.spinner("AI가 생기부 문구를 작성 중..."):
@@ -100,14 +106,50 @@ if st.button("✨ 생활기록부 문구 생성", type="primary", disabled=not c
             result = generate_report_with_ai(selected_student, chosen)
             st.session_state.report_result = result
             st.session_state.report_for = selected_student
+            st.session_state.report_edit_version += 1  # text_area 리셋 트리거
         except Exception as e:
             st.error(f"생성 오류: {e}")
 
-# --- [6. 결과 출력 및 복사] ---
+# --- [6. 결과 출력 (수동 편집 + 복사)] ---
 if st.session_state.get("report_result") and st.session_state.get("report_for") == selected_student:
     st.subheader("📄 생성된 생기부 문구")
-    st.code(st.session_state.report_result, language=None)
-    st.caption("우측 상단 복사 아이콘을 클릭하면 클립보드에 복사됩니다.")
+
+    # 버전 키로 새 생성 시 text_area 초기화
+    edit_key = f"report_edit_{st.session_state.report_edit_version}"
+    edited = st.text_area(
+        "생성된 문구 (직접 수정 가능)",
+        value=st.session_state.report_result,
+        height=150,
+        key=edit_key
+    )
+    st.session_state.report_result = edited  # 수정 내용 세션에 반영
+
+    # 클립보드 복사 버튼 (JS — Streamlit Cloud 호환)
+    copy_js = json.dumps(edited)
+    components.html(f"""
+    <script>
+    function copyText() {{
+        var text = {copy_js};
+        navigator.clipboard.writeText(text).then(function() {{
+            document.getElementById('cbtn').innerText = '✅ 복사됨!';
+            setTimeout(function() {{ document.getElementById('cbtn').innerText = '📋 클립보드에 복사'; }}, 2000);
+        }}).catch(function() {{
+            var ta = document.createElement('textarea');
+            ta.value = text; document.body.appendChild(ta);
+            ta.select(); document.execCommand('copy');
+            document.body.removeChild(ta);
+            document.getElementById('cbtn').innerText = '✅ 복사됨!';
+            setTimeout(function() {{ document.getElementById('cbtn').innerText = '📋 클립보드에 복사'; }}, 2000);
+        }});
+    }}
+    </script>
+    <button id="cbtn" onclick="copyText()" style="
+        background:#0068C9;color:white;border:none;
+        padding:0.4rem 1.2rem;border-radius:6px;
+        cursor:pointer;font-size:0.9rem;font-weight:bold;
+    ">📋 클립보드에 복사</button>
+    """, height=45)
+
     if st.button("🔄 다시 생성"):
         del st.session_state.report_result
         st.rerun()
