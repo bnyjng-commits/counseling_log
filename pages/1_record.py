@@ -1,10 +1,14 @@
 import streamlit as st
+import streamlit.components.v1 as components
 import uuid
 import time
 from datetime import datetime
+from pathlib import Path
 from zoneinfo import ZoneInfo
 from database import save_log, fetch_logs, analyze_category_with_ai, extract_info_from_text, analyze_image_with_ai
-from streamlit_mic_recorder import speech_to_text
+
+_COMPONENT_DIR = Path(__file__).parent.parent / "components" / "speech_recorder"
+_speech_recorder = components.declare_component("speech_recorder", path=str(_COMPONENT_DIR))
 
 # 🔒 검문소 설치
 if "user" not in st.session_state or not st.session_state.user:
@@ -87,12 +91,7 @@ col_stt, col_cam, col_upload = st.columns(3)
 with col_stt:
     stt_key = f"stt_{st.session_state.stt_key_idx}"
     # 녹음 버튼
-    text_from_voice = speech_to_text(
-        language='ko',
-        start_prompt="🎤 상담 내용 음성 녹음 시작",
-        stop_prompt="🛑 녹음 완료 및 분석하기",
-        key=stt_key
-    )
+    text_from_voice = _speech_recorder(key=stt_key, default=None)
     st.write(f"STT 결과: {text_from_voice}")
 
     if text_from_voice and text_from_voice != st.session_state.last_processed_text:

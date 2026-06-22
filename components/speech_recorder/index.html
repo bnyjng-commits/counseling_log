@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+    #btn {
+      width: 12rem;
+      height: 2.5rem;
+      font-weight: bold;
+      font-size: 0.95rem;
+      border-radius: 12px;
+      border: 1px solid #d1d5db;
+      background-color: white;
+      color: #31333f;
+      cursor: pointer;
+    }
+    #btn.recording {
+      background-color: #fee2e2;
+      border-color: #ef4444;
+      color: #dc2626;
+    }
+  </style>
+</head>
+<body>
+  <button id="btn" onclick="toggleRecording()">🎤 상담 내용 음성 녹음 시작</button>
+  <script>
+    let recognition = null;
+    let isRecording = false;
+    let fullTranscript = '';
+
+    // Streamlit 컴포넌트 프로토콜: 준비 완료 신호
+    window.parent.postMessage({ type: "streamlit:componentReady", apiVersion: 1 }, "*");
+
+    // iframe 높이 자동 맞춤
+    window.addEventListener('load', function() {
+      window.parent.postMessage({ type: "streamlit:setFrameHeight", height: document.body.scrollHeight + 10 }, "*");
+    });
+
+    function sendValue(value) {
+      window.parent.postMessage({ type: "streamlit:setComponentValue", value: value, dataType: "any" }, "*");
+    }
+
+    function toggleRecording() {
+      if (!isRecording) {
+        startRecording();
+      } else {
+        recognition.stop();
+      }
+    }
+
+    function startRecording() {
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!SpeechRecognition) {
+        alert('이 브라우저는 음성 인식을 지원하지 않습니다.\nChrome 브라우저를 사용해 주세요.');
+        return;
+      }
+
+      fullTranscript = '';
+      recognition = new SpeechRecognition();
+      recognition.lang = 'ko-KR';
+      recognition.continuous = true;
+      recognition.interimResults = false;
+
+      recognition.onstart = function() {
+        isRecording = true;
+        var btn = document.getElementById('btn');
+        btn.textContent = '🛑 녹음 완료 및 분석하기';
+        btn.classList.add('recording');
+      };
+
+      recognition.onresult = function(event) {
+        for (var i = event.resultIndex; i < event.results.length; i++) {
+          if (event.results[i].isFinal) {
+            fullTranscript += event.results[i][0].transcript;
+          }
+        }
+      };
+
+      recognition.onerror = function(event) {
+        console.error('Speech recognition error:', event.error);
+        isRecording = false;
+        var btn = document.getElementById('btn');
+        btn.textContent = '🎤 상담 내용 음성 녹음 시작';
+        btn.classList.remove('recording');
+      };
+
+      recognition.onend = function() {
+        isRecording = false;
+        var btn = document.getElementById('btn');
+        btn.textContent = '🎤 상담 내용 음성 녹음 시작';
+        btn.classList.remove('recording');
+        if (fullTranscript) {
+          sendValue(fullTranscript);
+        }
+      };
+
+      recognition.start();
+    }
+  </script>
+</body>
+</html>
