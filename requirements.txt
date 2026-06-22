@@ -5,3 +5,4 @@ streamlit-mic-recorder
 streamlit-calendar
 pytz
 openpyxl
+pandas
