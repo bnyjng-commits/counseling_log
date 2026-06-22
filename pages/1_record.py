@@ -70,7 +70,7 @@ st.session_state.my_class = st.sidebar.text_input("내 학급(우리반) 설정"
 st.title("✍️ 상담 내용 기록")
 
 # --- [3. 학급 목록 준비] ---
-logs = fetch_logs()
+logs = fetch_logs(user_id)
 existing_classes = sorted(list(set(log['grade_class'] for log in logs if log.get('grade_class')))) if logs else []
 class_options = []
 if st.session_state.my_class:
