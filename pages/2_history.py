@@ -2,6 +2,8 @@ import streamlit as st
 from database import fetch_logs, update_log, delete_log, get_user_settings, save_user_settings
 from datetime import datetime
 from collections import Counter
+import pandas as pd
+from io import BytesIO
 
 # 🔒 검문소 설치
 if "user" not in st.session_state or not st.session_state.user:
@@ -87,6 +89,29 @@ with col_f2:
 filtered_logs = [log for log in logs if
                  (selected_class == "전체" or log.get('grade_class') == selected_class) and
                  (selected_category == "전체" or log.get('category') == selected_category)]
+
+# 엑셀 다운로드
+def convert_to_excel(logs):
+    df = pd.DataFrame(logs)
+    # 필요한 컬럼만 선택 및 이름 변경
+    df = df[["student_name", "grade_class", "category", "content", "created_at"]].copy()
+    df.columns = ["학생이름", "학급", "카테고리", "상담내용", "상담일시"]
+    # 상담일시 형식 정리
+    df["상담일시"] = pd.to_datetime(df["상담일시"], utc=True).dt.tz_convert("Asia/Seoul").dt.strftime("%Y-%m-%d %H:%M")
+    # 정렬: 이름 가나다순 → 상담일시 오름차순
+    df = df.sort_values(by=["학생이름", "상담일시"], ascending=[True, True])
+    output = BytesIO()
+    with pd.ExcelWriter(output, engine="openpyxl") as writer:
+        df.to_excel(writer, index=False, sheet_name="상담기록")
+    return output.getvalue()
+
+excel_data = convert_to_excel(filtered_logs)
+st.download_button(
+    label="📥 엑셀로 다운로드",
+    data=excel_data,
+    file_name=f"상담기록_{selected_class}_{datetime.today().strftime('%Y%m%d')}.xlsx",
+    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+)
 
 # --- [7. 화면 분할] ---
 col_list, col_detail = st.columns([1, 3])
