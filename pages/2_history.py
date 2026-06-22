@@ -97,7 +97,7 @@ def convert_to_excel(logs):
     df = df[["student_name", "grade_class", "category", "content", "created_at"]].copy()
     df.columns = ["학생이름", "학급", "카테고리", "상담내용", "상담일시"]
     # 상담일시 형식 정리
-    df["상담일시"] = pd.to_datetime(df["상담일시"], utc=True).dt.tz_convert("Asia/Seoul").dt.strftime("%Y-%m-%d %H:%M")
+    df["상담일시"] = df["상담일시"].astype(str).str[:16]
     # 정렬: 이름 가나다순 → 상담일시 오름차순
     df = df.sort_values(by=["학생이름", "상담일시"], ascending=[True, True])
     output = BytesIO()
