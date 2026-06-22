@@ -69,7 +69,7 @@ def schedule_dialog():
 
 # ── 우리반 설정 변경 시 DB 저장 콜백 ─────────────────────────────────────────
 def on_class_change():
-    if st.session_state.user:
+    if st.session_state.user and "sidebar_my_class" in st.session_state:
         st.session_state.my_class = st.session_state.sidebar_my_class
         save_user_settings(st.session_state.user.id, st.session_state.sidebar_my_class)
 
