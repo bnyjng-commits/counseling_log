@@ -1,6 +1,7 @@
 streamlit
 supabase
 google-generativeai
+streamlit-mic-recorder==0.0.4
 streamlit-calendar
 pytz
 openpyxl
