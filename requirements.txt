@@ -1,7 +1,7 @@
 streamlit
 supabase
 anthropic
-streamlit-mic-recorder
+streamlit-mic-recorder==0.0.4
 streamlit-calendar
 pytz
 openpyxl
