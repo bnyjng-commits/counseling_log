@@ -93,6 +93,7 @@ with col_stt:
         stop_prompt="🛑 녹음 완료 및 분석하기",
         key=stt_key
     )
+    st.write(f"STT 결과: {text_from_voice}")
 
     if text_from_voice and text_from_voice != st.session_state.last_processed_text:
         with st.spinner("소넷 비서가 분석 중..."):
