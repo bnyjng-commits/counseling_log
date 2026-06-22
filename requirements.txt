@@ -1,6 +1,6 @@
 streamlit
 supabase
-google-generativeai
+anthropic
 streamlit-mic-recorder==0.0.4
 streamlit-calendar
 pytz

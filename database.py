@@ -1,17 +1,15 @@
 import streamlit as st
 from supabase import create_client, Client
-import google.generativeai as genai
+import anthropic
 import json
 import datetime
 import pytz
-import io
-from PIL import Image
+import base64
 
 # 보안 설정값
 SUPABASE_URL = st.secrets["SUPABASE_URL"]
 SUPABASE_KEY = st.secrets["SUPABASE_KEY"]
-GEMINI_API_KEY = st.secrets["GEMINI_API_KEY"]
-genai.configure(api_key=GEMINI_API_KEY)
+ANTHROPIC_API_KEY = st.secrets["ANTHROPIC_API_KEY"]
 
 # ── Supabase에서 실행해야 할 테이블 생성 SQL (참고용) ──────────────────────
 #
@@ -165,7 +163,7 @@ def delete_schedule(schedule_id):
 
 # --- [AI 생성 함수: 생활기록부 문구 생성] ---
 def generate_report_with_ai(student_name, selected_logs):
-    model = genai.GenerativeModel('gemini-1.5-flash')
+    client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
     logs_text = "\n".join([
         f"- [{log.get('category', '기타')}] {log.get('content', '')}"
         for log in selected_logs
@@ -183,27 +181,41 @@ def generate_report_with_ai(student_name, selected_logs):
 - 부정적 표현은 긍정적으로 순화하여 작성
 - 다른 설명 없이 문구만 출력"""
 
-    response = model.generate_content(prompt)
-    return response.text.strip()
+    response = client.messages.create(
+        model="claude-sonnet-4-6",
+        max_tokens=600,
+        messages=[{"role": "user", "content": prompt}]
+    )
+    return response.content[0].text.strip()
 
 
 # --- [AI 분석 함수: 텍스트 카테고리 분류] ---
 def analyze_category_with_ai(content):
-    model = genai.GenerativeModel('gemini-1.5-flash')
+    client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
     prompt = f"다음 상담 내용을 보고 [행동, 정서, 학업, 가정, 진로, 기타] 중 하나로 분류해줘. 행동/정서/학업/가정/진로 중 어디에도 해당하지 않으면 기타로 분류해. 단어만 답해:\n\n{content}"
-    response = model.generate_content(prompt)
-    return response.text.strip()
+
+    response = client.messages.create(
+        model="claude-sonnet-4-6",
+        max_tokens=10,
+        messages=[{"role": "user", "content": prompt}]
+    )
+    return response.content[0].text.strip()
 
 
 # --- [AI 분석 함수: 음성/텍스트 정보 추출] ---
 def extract_info_from_text(text):
-    model = genai.GenerativeModel('gemini-1.5-flash')
+    client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
     prompt = f"""다음 문장에서 학생 이름, 반, 상담 내용을 추출해서 JSON으로 답해.
     형식: {{"name": "이름", "class": "반", "content": "내용"}}
     문장: {text}"""
 
-    response = model.generate_content(prompt)
-    raw_text = response.text
+    response = client.messages.create(
+        model="claude-sonnet-4-6",
+        max_tokens=500,
+        messages=[{"role": "user", "content": prompt}]
+    )
+
+    raw_text = response.content[0].text
     try:
         start_idx = raw_text.find('{')
         end_idx = raw_text.rfind('}') + 1
@@ -218,12 +230,34 @@ def extract_info_from_text(text):
 
 # --- [AI 분석 함수: 사진(OCR) 정보 추출] ---
 def analyze_image_with_ai(image_file):
-    model = genai.GenerativeModel('gemini-1.5-flash')
-    image = Image.open(io.BytesIO(image_file.getvalue()))
-    prompt = "이 사진의 손글씨를 읽고 { \"name\": \"학생이름\", \"class\": \"학급\", \"content\": \"내용\" } 형식의 JSON으로만 답하세요. 다른 말은 하지 마세요."
+    client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
+    base64_image = base64.b64encode(image_file.getvalue()).decode("utf-8")
 
-    response = model.generate_content([prompt, image])
-    raw_text = response.text
+    response = client.messages.create(
+        model="claude-sonnet-4-6",
+        max_tokens=1024,
+        messages=[
+            {
+                "role": "user",
+                "content": [
+                    {
+                        "type": "image",
+                        "source": {
+                            "type": "base64",
+                            "media_type": "image/jpeg",
+                            "data": base64_image,
+                        },
+                    },
+                    {
+                        "type": "text",
+                        "text": "이 사진의 손글씨를 읽고 { \"name\": \"학생이름\", \"class\": \"학급\", \"content\": \"내용\" } 형식의 JSON으로만 답하세요. 다른 말은 하지 마세요."
+                    }
+                ],
+            }
+        ],
+    )
+
+    raw_text = response.content[0].text
     try:
         start_idx = raw_text.find('{')
         end_idx = raw_text.rfind('}') + 1
