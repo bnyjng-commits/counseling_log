@@ -96,11 +96,14 @@ with col_stt:
 
     if text_from_voice and text_from_voice != st.session_state.last_processed_text:
         with st.spinner("소넷 비서가 분석 중..."):
-            extracted = extract_info_from_text(text_from_voice)
-            st.session_state.temp_name = extracted.get("name", "")
-            st.session_state.temp_content = extracted.get("content", "")
-            st.session_state.last_processed_text = text_from_voice
-            st.rerun()
+            try:
+                extracted = extract_info_from_text(text_from_voice)
+                st.session_state.temp_name = extracted.get("name", "")
+                st.session_state.temp_content = extracted.get("content", "")
+                st.session_state.last_processed_text = text_from_voice
+                st.rerun()
+            except Exception as e:
+                st.error(f"음성 분석 오류: {e}")
 
 with col_cam:
     # 사진 촬영 버튼
