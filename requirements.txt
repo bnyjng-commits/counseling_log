@@ -1,6 +1,6 @@
 streamlit
 supabase
-anthropic
+google-generativeai
 streamlit-calendar
 pytz
 openpyxl

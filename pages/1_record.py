@@ -3,12 +3,8 @@ import streamlit.components.v1 as components
 import uuid
 import time
 from datetime import datetime
-from pathlib import Path
 from zoneinfo import ZoneInfo
 from database import save_log, fetch_logs, analyze_category_with_ai, extract_info_from_text, analyze_image_with_ai
-
-_COMPONENT_DIR = Path(__file__).parent.parent / "components" / "speech_recorder"
-_speech_recorder = components.declare_component("speech_recorder", path=str(_COMPONENT_DIR))
 
 # 🔒 검문소 설치
 if "user" not in st.session_state or not st.session_state.user:
@@ -66,6 +62,19 @@ if "show_camera" not in st.session_state: st.session_state.show_camera = False
 # 🌟 추가: 사진 업로더 노출 상태 변수
 if "show_uploader" not in st.session_state: st.session_state.show_uploader = False
 
+# --- [STT 결과 처리: query params → session_state] ---
+_stt_raw = st.query_params.get("stt_result", "")
+if _stt_raw and _stt_raw != st.session_state.last_processed_text:
+    with st.spinner("AI가 분석 중..."):
+        try:
+            extracted = extract_info_from_text(_stt_raw)
+            st.session_state.temp_name = extracted.get("name", "")
+            st.session_state.temp_content = extracted.get("content", "")
+            st.session_state.last_processed_text = _stt_raw
+        except Exception as e:
+            st.error(f"음성 분석 오류: {e}")
+    st.query_params.clear()
+
 # --- [2. 사이드바 설정] ---
 st.sidebar.title("⚙️ 설정")
 if "my_class" not in st.session_state: st.session_state.my_class = ""
@@ -89,21 +98,23 @@ st.subheader("🎤 말로 하거나 📷 사진 촬영/업로드")
 col_stt, col_cam, col_upload = st.columns(3)
 
 with col_stt:
-    stt_key = f"stt_{st.session_state.stt_key_idx}"
-    # 녹음 버튼
-    text_from_voice = _speech_recorder(key=stt_key, default=None)
-    st.write(f"STT 결과: {text_from_voice}")
-
-    if text_from_voice and text_from_voice != st.session_state.last_processed_text:
-        with st.spinner("소넷 비서가 분석 중..."):
-            try:
-                extracted = extract_info_from_text(text_from_voice)
-                st.session_state.temp_name = extracted.get("name", "")
-                st.session_state.temp_content = extracted.get("content", "")
-                st.session_state.last_processed_text = text_from_voice
-                st.rerun()
-            except Exception as e:
-                st.error(f"음성 분석 오류: {e}")
+    stt_html = """<button id="btn" onclick="toggle()" style="width:12rem;height:2.5rem;font-weight:bold;font-size:0.95rem;border-radius:12px;border:1px solid #d1d5db;background:white;color:#31333f;cursor:pointer;">🎤 상담 내용 음성 녹음 시작</button>
+<script>
+var rec=null,going=false,txt='';
+function toggle(){going?rec.stop():start();}
+function start(){
+  var SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  if(!SR){alert('Chrome 브라우저를 사용해 주세요.');return;}
+  txt='';rec=new SR();rec.lang='ko-KR';rec.continuous=true;rec.interimResults=false;
+  rec.onstart=function(){going=true;var b=document.getElementById('btn');b.textContent='🛑 녹음 완료 및 분석하기';b.style.cssText='width:12rem;height:2.5rem;font-weight:bold;font-size:0.95rem;border-radius:12px;border:1px solid #ef4444;background:#fee2e2;color:#dc2626;cursor:pointer;';};
+  rec.onresult=function(e){for(var i=e.resultIndex;i<e.results.length;i++){if(e.results[i].isFinal)txt+=e.results[i][0].transcript;}};
+  rec.onerror=function(){going=false;reset();};
+  rec.onend=function(){going=false;reset();if(txt){var u=new URL(window.parent.location.href);u.searchParams.set('stt_result',txt);window.parent.location.href=u.toString();}};
+  rec.start();
+}
+function reset(){var b=document.getElementById('btn');b.textContent='🎤 상담 내용 음성 녹음 시작';b.style.cssText='width:12rem;height:2.5rem;font-weight:bold;font-size:0.95rem;border-radius:12px;border:1px solid #d1d5db;background:white;color:#31333f;cursor:pointer;';}
+</script>"""
+    components.html(stt_html, height=60)
 
 with col_cam:
     # 사진 촬영 버튼
