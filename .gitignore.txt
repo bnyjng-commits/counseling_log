@@ -1,0 +1,14 @@
+# 스트림릿 비밀 설정 파일 (절대 업로드 금지)
+.streamlit/secrets.toml
+
+# 파이썬 실행 시 생기는 임시 파일들
+__pycache__/
+*.py[cod]
+
+# 가상환경 (용량만 차지하고 필요 없음)
+venv/
+.env
+
+# 기타 OS 임시 파일
+.DS_Store
+Thumbs.db
